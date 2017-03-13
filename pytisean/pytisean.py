@@ -16,7 +16,7 @@ __email__ = "bogeholm@nbi.ku.dk"
 __status__ = "Development"
 
 # Directory for temporary files
-DIRSTR = '/private/tmp/'
+DIRSTR = '/tmp/'
 # Prefix to identify these files
 PREFIXSTR = 'pytisean_temp_'
 # suffix - TISEAN likes .dat
@@ -42,7 +42,7 @@ def gentmpfile():
                                text=True)
     return fhandle
 
-def tiseanio(command, *args, data=None, silent=False):
+def tiseanio(command, *args, **kwargs): #data=None, silent=False):
     """ TISEAN input/output wrapper.
 
         Accept numpy array 'data' - run 'command' on this and return result.
@@ -55,6 +55,10 @@ def tiseanio(command, *args, data=None, silent=False):
     # If user specifies '-o' the save routine below will fail.
     if '-o' in args:
         raise ValueError('User is not allowed to specify an output file.')
+
+    # Get Keyword Args
+    data = kwargs.get('data', None)
+    silent = kwargs.get('silent', False)
 
     # Handles to temporary files
     tf_in = gentmpfile()
@@ -101,7 +105,7 @@ def tiseanio(command, *args, data=None, silent=False):
     return res, err_string
 
 
-def tiseano(command, *args, silent=False):
+def tiseano(command, *args, **kwargs):  # silent=False):
     """ TISEAN output wrapper.
 
         Run 'command' and return result.
@@ -115,6 +119,9 @@ def tiseano(command, *args, silent=False):
     # Check for user specified args
     if '-o' in args:
         raise ValueError('User is not allowed to specify an output file.')
+
+    # Get Keyword Args
+    silent = kwargs.get('silent', False)
 
     # Handle to temporary file
     tf_out = gentmpfile()
