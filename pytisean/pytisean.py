@@ -6,6 +6,7 @@ import subprocess
 import os
 from time import strftime
 import numpy as np
+from threading import Timer
 
 __author__ = "Troels Bogeholm Mikkelsen"
 __copyright__ = "Troels Bogeholm Mikkelsen 2016"
@@ -76,6 +77,8 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
         arglist = [str(a) for a in args]
         commandargs = [command, fullname_in] + arglist + ['-o', fullname_out]
 
+    kill = lambda process: process.kill()
+
     # We will clean up irregardless of following success.
     try:
         # Save the input to the temporary 'in' file
@@ -86,13 +89,19 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
 
-        # Communicate with the subprocess
-        (_, err_bytes) = subp.communicate()
+        my_timer = Timer(30, kill, [subp])
+        try:
+            my_timer.start()
+            # Communicate with the subprocess
+            (_, err_bytes) = subp.communicate()
+        finally:
+            my_timer.cancel()
+
         # Read the temporary 'out' file
-        res = np.loadtxt(fullname_out)#, delimiter='\t')
+        if os.path.exists(fullname_out) and os.path.getsize(fullname_out) > 0:
+            res = np.loadtxt(fullname_out)#, delimiter='\t')
         # We will read this
         err_string = err_bytes.decode('utf-8')
-
     # Cleanup
     finally:
         os.remove(fullname_in)
