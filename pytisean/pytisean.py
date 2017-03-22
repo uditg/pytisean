@@ -29,15 +29,15 @@ def strnow():
     """
     return strftime('%Y-%m-%d-%H-%M-%S')
 
-def genfilename():
+def genfilename(ftype):
     """ Generate a file name.
     """
-    return PREFIXSTR + strnow() + '_'
+    return PREFIXSTR + strnow() + '_' + ftype + '_'
 
-def gentmpfile():
+def gentmpfile(ftype):
     """ Generate temporary file and return file handle.
     """
-    fhandle = tempfile.mkstemp(prefix=genfilename(),
+    fhandle = tempfile.mkstemp(prefix=genfilename(ftype),
                                suffix=SUFFIXSTR,
                                dir=DIRSTR,
                                text=True)
@@ -62,8 +62,8 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
     silent = kwargs.get('silent', False)
 
     # Handles to temporary files
-    tf_in = gentmpfile()
-    tf_out = gentmpfile()
+    tf_in = gentmpfile('in')
+    tf_out = gentmpfile('out')
     # Full names
     fullname_in = tf_in[1]
     fullname_out = tf_out[1]
@@ -88,22 +88,26 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
         subp = subprocess.Popen(commandargs,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
+        (_, err_bytes) = subp.communicate()
 
-        my_timer = Timer(30, kill, [subp])
-        try:
-            my_timer.start()
+        # my_timer = Timer(30, kill, [subp])
+        # try:
+        #    my_timer.start()
             # Communicate with the subprocess
-            (_, err_bytes) = subp.communicate()
-        finally:
-            my_timer.cancel()
+        #    (_, err_bytes) = subp.communicate()
+        # finally:
+        #    my_timer.cancel()
 
         # Read the temporary 'out' file
-        if os.path.exists(fullname_out) and os.path.getsize(fullname_out) > 0:
-            res = np.loadtxt(fullname_out)#, delimiter='\t')
+        assert os.path.exists(fullname_out) and os.path.getsize(fullname_out) > 0, 'Output file not generated.'
+        res = np.loadtxt(fullname_out)#, delimiter='\t')
+
         # We will read this
         err_string = err_bytes.decode('utf-8')
     # Cleanup
     finally:
+        # if subp.poll():
+        #     subp.terminate()
         os.remove(fullname_in)
         os.remove(fullname_out)
 
