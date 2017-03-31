@@ -3,7 +3,7 @@
 
 import tempfile
 import subprocess
-import os
+import os, signal
 from time import strftime
 import numpy as np
 from threading import Timer
@@ -41,7 +41,8 @@ def gentmpfile(ftype):
                                suffix=SUFFIXSTR,
                                dir=DIRSTR,
                                text=True)
-    return fhandle
+    os.close(fhandle[0])
+    return fhandle[1]
 
 def tiseanio(command, *args, **kwargs): #data=None, silent=False):
     """ TISEAN input/output wrapper.
@@ -61,12 +62,9 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
     data = kwargs.get('data', None)
     silent = kwargs.get('silent', False)
 
-    # Handles to temporary files
-    tf_in = gentmpfile('in')
-    tf_out = gentmpfile('out')
-    # Full names
-    fullname_in = tf_in[1]
-    fullname_out = tf_out[1]
+    # Names of temporary files
+    fullname_in = gentmpfile('in')
+    fullname_out = gentmpfile('out')
 
     # If no further args are specified, run this
     if not args:
@@ -81,15 +79,17 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
 
     # We will clean up irregardless of following success.
     try:
+    
         # Save the input to the temporary 'in' file
+        # with open(fullname_in, mode='w') as fout:
         np.savetxt(fullname_in, data, delimiter='\t')
-
+        
         # Here we call TISEAN (or something else?)
         subp = subprocess.Popen(commandargs,
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE,
+                                preexec_fn=os.setsid)
         (_, err_bytes) = subp.communicate()
-
         # my_timer = Timer(30, kill, [subp])
         # try:
         #    my_timer.start()
@@ -100,6 +100,8 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
 
         # Read the temporary 'out' file
         assert os.path.exists(fullname_out) and os.path.getsize(fullname_out) > 0, 'Output file not generated.'
+
+        # with open(fullname_out, mode='w') as fin:
         res = np.loadtxt(fullname_out)#, delimiter='\t')
 
         # We will read this
@@ -110,7 +112,7 @@ def tiseanio(command, *args, **kwargs): #data=None, silent=False):
         #     subp.terminate()
         os.remove(fullname_in)
         os.remove(fullname_out)
-
+        
     if not silent:
         print(err_string)
 
